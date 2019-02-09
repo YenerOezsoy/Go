@@ -29,6 +29,8 @@ func Walker(t *Tree, ch chan int) {
 func Same(t1, t2 *Tree) bool {
 	var chan1 = make(chan int)
 	var chan2 = make(chan int)
+	var array1Done = make(chan int)
+	var array2Done = make(chan int)
 
 	go Walker(t1, chan1)
 	go Walker(t2, chan2)
@@ -36,30 +38,25 @@ func Same(t1, t2 *Tree) bool {
 	var array1 []int
 	var array2 []int
 
-	fillArrays(&array1, &array2, chan1, chan2)
+	go fillArray(&array1, chan1, array1Done)
+	go fillArray(&array2, chan2, array2Done)
+
+	<-array1Done
+	<-array2Done
 
 	return checkEquality(&array1, &array2)
 
 }
 
-func fillArrays(array1 *[]int, array2 *[]int, chan1 chan int, chan2 chan int) {
-	var ok1 = true
-	var ok2 = true
+func fillArray(array *[]int, ch chan int, done chan int) {
+	var ok = true
+	var elem int
 
-	var elem1, elem2 int
-
-	for ok1 || ok2 {
-		select {
-		case elem1, ok1 = <-chan1:
-			if ok1 {
-				*array1 = append(*array1, elem1)
-			}
-		case elem2, ok2 = <-chan2:
-			if ok2 {
-				*array2 = append(*array2, elem2)
-			}
-		}
+	for ok {
+		elem, ok = <-ch
+		*array = append(*array, elem)
 	}
+	done <- 1
 }
 
 func checkEquality(array1 *[]int, array2 *[]int) bool {
