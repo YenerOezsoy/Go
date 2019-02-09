@@ -8,10 +8,10 @@ func WordCount(s string) map[string]int {
 	mapped := make(map[string]int)
 	var split = strings.Split(s, " ")
 	for _, word := range split {
-		elem, ok := mapped[word]
+		count, ok := mapped[word]
 		if ok {
-			elem++
-			mapped[word] = elem
+			count++
+			mapped[word] = count
 		} else {
 			mapped[word] = 1
 		}
