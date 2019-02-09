@@ -24,17 +24,17 @@ func createNewTable() table {
 
 func philosopher(id int, table table) {
 	for {
-		fmt.Printf("Philosopher %d is hungry and tries to eat\n", id)
+		fmt.Printf("Filozofcu %d ac ve yemek yemek istiyor\n", id)
 		var success = false
 		success = eating(id, table)
 		if success {
-			fmt.Printf("Philosopher %d was successfull and is eating\n", id)
+			fmt.Printf("Filozofcu %d basariliydi ve yemege basliyo\n", id)
 			time.Sleep(EATTIME * SECONDS)
-			fmt.Printf("Philosopher %d done eating\n", id)
+			fmt.Printf("Filozofcu %d yemegini bitirdi\n", id)
 			layDownAllForks(table, id, true, true, getLeftHandIndex(id), getRightHandIndex(id))
 			time.Sleep(SLEEPTIME * SECONDS)
 		} else {
-			fmt.Printf("Philosopher %d was not successfull and is thinking again\n", id)
+			fmt.Printf("Filozofcu %d basarili degildi ve ise devam ediyor\n", id)
 			time.Sleep(THINKTIME * SECONDS)
 		}
 	}
@@ -61,10 +61,10 @@ func eating(id int, table table) bool {
 	for i := 0; i < 2; i++ {
 		select {
 		case table.forks[leftHandIndex] <- 1:
-			fmt.Printf("Philosopher %d took left fork\n", id)
+			fmt.Printf("Filozofcu %d solundaki catali aldi %d\n", id, leftHandIndex)
 			leftHand = true
 		case table.forks[rightHandIndex] <- 1:
-			fmt.Printf("Philosopher %d took right fork\n", id)
+			fmt.Printf("Filozofcu %d sagindaki catali aldi %d\n", id, rightHandIndex)
 			rightHand = true
 		default:
 			layDownAllForks(table, id, leftHand, rightHand, leftHandIndex, rightHandIndex)
@@ -77,11 +77,11 @@ func eating(id int, table table) bool {
 func layDownAllForks(table table, id int, leftHand bool, rightHand bool, leftHandIndex int, rightHandIndex int) {
 	if leftHand {
 		<-table.forks[leftHandIndex]
-		fmt.Printf("Philosopher %d put down left fork\n", id)
+		fmt.Printf("Filozofcu %d sol elindeki catali birakti %d \n", id, leftHandIndex)
 	}
 	if rightHand {
 		<-table.forks[rightHandIndex]
-		fmt.Printf("Philosopher %d put down right fork\n", id)
+		fmt.Printf("Filozofcu %d sag elindeki catali birakti %d\n", id, rightHandIndex)
 	}
 }
 
