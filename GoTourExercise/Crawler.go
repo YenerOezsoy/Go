@@ -57,31 +57,27 @@ func doCrawling(url string, depth int, visited *[]string, mutex *sync.Mutex, ch 
 
 func getCrawlerFunction(isRootCrawler bool, u string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int, channels *[]chan int) func() {
 	if !isRootCrawler {
-		return concurrentCrawlerTask(u, depth, visited, mutex, channels)
+		return concurrentCrawlerTask(u, depth, visited, mutex, ch)
 	} else {
-		return rootCrawlerTask(u, depth, visited, mutex, ch)
+		return rootCrawlerTask(u, depth, visited, mutex, channels)
 	}
 }
 
-func rootCrawlerTask(u string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int) func() {
+func concurrentCrawlerTask(u string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int) func() {
 	return func() {
 		if !contains(u, visited, mutex) {
-			mutex.Lock()
 			*visited = append(*visited, u)
-			mutex.Unlock()
 			Crawler(u, depth-1, visited, mutex, ch)
 		}
 	}
 }
 
-func concurrentCrawlerTask(u string, depth int, visited *[]string, mutex *sync.Mutex, channels *[]chan int) func() {
+func rootCrawlerTask(u string, depth int, visited *[]string, mutex *sync.Mutex, channels *[]chan int) func() {
 	return func() {
 		var ch = make(chan int)
 		*channels = append(*channels, ch)
-		mutex.Lock()
 		*visited = append(*visited, u)
 		go Crawler(u, depth-1, visited, mutex, ch)
-		mutex.Unlock()
 	}
 }
 
