@@ -25,7 +25,7 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 
 	visited = append(visited, url)
 
-	doCrawling(url, depth, &visited, &mutex, nil, 0, &channels)
+	doCrawling(url, depth, &visited, &mutex, nil, true, &channels)
 
 	for _, ch := range channels {
 		<-ch
@@ -34,12 +34,12 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 }
 
 func Crawler(url string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int) {
-	doCrawling(url, depth, visited, mutex, ch, 1, nil)
+	doCrawling(url, depth, visited, mutex, ch, false, nil)
 	checkEnd(depth, ch)
 	return
 }
 
-func doCrawling(url string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int, crawlerID int, channels *[]chan int) {
+func doCrawling(url string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int, isRootCrawler bool, channels *[]chan int) {
 	if depth <= 0 {
 		return
 	}
@@ -48,25 +48,25 @@ func doCrawling(url string, depth int, visited *[]string, mutex *sync.Mutex, ch 
 		fmt.Println(err)
 		return
 	}
+	fmt.Printf("Found: %s %v\n", url, body)
 	for _, u := range urls {
-		f := getCrawlerFunction(crawlerID, u, body, depth, visited, mutex, ch, channels)
+		f := getCrawlerFunction(isRootCrawler, u, depth, visited, mutex, ch, channels)
 		f()
 	}
 }
 
-func getCrawlerFunction(id int, u string, body string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int, channels *[]chan int) func() {
-	if id == 0 {
-		return concurrentCrawlerSpecificTask(u, body, depth, visited, mutex, ch, channels)
+func getCrawlerFunction(isRootCrawler bool, u string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int, channels *[]chan int) func() {
+	if !isRootCrawler {
+		return concurrentCrawlerTask(u, depth, visited, mutex, channels)
 	} else {
-		return crawlerSpecificTask(u, body, depth, visited, mutex, ch)
+		return rootCrawlerTask(u, depth, visited, mutex, ch)
 	}
 }
 
-func crawlerSpecificTask(u string, body string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int) func() {
+func rootCrawlerTask(u string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int) func() {
 	return func() {
 		if !contains(u, visited, mutex) {
 			mutex.Lock()
-			fmt.Printf("found: %s %q\n", u, body)
 			*visited = append(*visited, u)
 			mutex.Unlock()
 			Crawler(u, depth-1, visited, mutex, ch)
@@ -74,11 +74,10 @@ func crawlerSpecificTask(u string, body string, depth int, visited *[]string, mu
 	}
 }
 
-func concurrentCrawlerSpecificTask(u string, body string, depth int, visited *[]string, mutex *sync.Mutex, ch chan int, channels *[]chan int) func() {
+func concurrentCrawlerTask(u string, depth int, visited *[]string, mutex *sync.Mutex, channels *[]chan int) func() {
 	return func() {
 		var ch = make(chan int)
 		*channels = append(*channels, ch)
-		fmt.Printf("found: %s \n", u)
 		mutex.Lock()
 		*visited = append(*visited, u)
 		go Crawler(u, depth-1, visited, mutex, ch)
