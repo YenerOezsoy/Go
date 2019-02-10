@@ -5,6 +5,11 @@ import (
 	"sync"
 )
 
+const (
+	DEPTH       = 4
+	ENDINGDEPTH = DEPTH - 1
+)
+
 type Fetcher interface {
 	// Fetch returns the body of URL and
 	// a slice of URLs found on that page.
@@ -17,9 +22,9 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 	var visited []string
 	var mutex = sync.Mutex{}
 	var channels []chan int
-	if depth <= 0 {
-		return
-	}
+
+	visited = append(visited, url)
+
 	body, urls, err := fetcher.Fetch(url)
 	if err != nil {
 		fmt.Println(err)
@@ -29,9 +34,10 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 	for _, u := range urls {
 		var ch = make(chan int)
 		channels = append(channels, ch)
+		fmt.Printf("found: %s \n", u)
 		mutex.Lock()
 		visited = append(visited, u)
-		go Crawler(u, depth-1, fetcher, &visited, &mutex, ch, depth-1)
+		go Crawler(u, depth-1, fetcher, &visited, &mutex, ch)
 		mutex.Unlock()
 	}
 
@@ -43,34 +49,34 @@ func Crawl(url string, depth int, fetcher Fetcher) {
 
 }
 
-func Crawler(url string, depth int, fetcher Fetcher, visited *[]string, mutex *sync.Mutex, ch chan int, endingDepth int) {
+func Crawler(url string, depth int, fetcher Fetcher, visited *[]string, mutex *sync.Mutex, ch chan int) {
 	if depth <= 0 {
-		checkEnd(depth, endingDepth, ch)
+		checkEnd(depth, ch)
 		return
 	}
 	body, urls, err := fetcher.Fetch(url)
 	if err != nil {
 		fmt.Println(err)
-		checkEnd(depth, endingDepth, ch)
+		checkEnd(depth, ch)
 		return
 	}
-	fmt.Printf("found: %s %q\n", url, body)
 	for _, u := range urls {
 		if !contains(u, visited, mutex) {
 			mutex.Lock()
+			fmt.Printf("found: %s %q\n", u, body)
 			*visited = append(*visited, u)
 			mutex.Unlock()
-			Crawler(u, depth-1, fetcher, visited, mutex, ch, endingDepth)
+			Crawler(u, depth-1, fetcher, visited, mutex, ch)
 		}
 
 	}
-	checkEnd(depth, endingDepth, ch)
+	checkEnd(depth, ch)
 
 	return
 }
 
-func checkEnd(depth int, endingDepth int, ch chan int) {
-	if depth == endingDepth {
+func checkEnd(depth int, ch chan int) {
+	if depth == ENDINGDEPTH {
 		ch <- 1
 	}
 }
@@ -88,7 +94,7 @@ func contains(url string, visited *[]string, mutex *sync.Mutex) bool {
 }
 
 func main() {
-	Crawl("http://golang.org/", 4, fetcher)
+	Crawl("http://golang.org/", DEPTH, fetcher)
 }
 
 // fakeFetcher is Fetcher that returns canned results.
